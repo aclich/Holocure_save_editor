@@ -1,5 +1,5 @@
 # Holocure Save Editor
-An simple save editor for Holocure fan game  
+A simple save editor for Holocure fan game  
 Download: https://github.com/aclich/Holocure_save_editor/releases/download/v0.0.1/HoloCure_Save_Editor_v0.0.1.zip  
 Support editing:  
 - Holocoin
