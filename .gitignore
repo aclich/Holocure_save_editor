@@ -1,0 +1,10 @@
+*.pyc
+venv/
+release/
+__pycache__/
+*.dat
+*.json
+*.ini
+*.zip
+*.ipynb
+*.ico
