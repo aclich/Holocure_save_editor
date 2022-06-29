@@ -1,13 +1,13 @@
 # Holocure Save Editor
 An simple save editor for Holocure fan game  
-Download: https://github.com/aclich/Holocure_save_editor/releases/tag/pre-build  
+Download: https://github.com/aclich/Holocure_save_editor/releases/download/v0.0.1/HoloCure_Save_Editor_v0.0.1.zip  
 Support editing:  
 - Holocoin
 - Shop items
 - Charactor gacha level
 - Lock, Unlock items/weapons/collabs
   
-<img src='./screenshot.png'/>
+<img width=500 src='./screenshot.png'/>
 
 ## require
 - python > 3.6
