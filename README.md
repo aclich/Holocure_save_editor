@@ -8,7 +8,7 @@ Download (exe): https://github.com/aclich/Holocure_save_editor/releases/download
   - Charactor gacha level
   - Lock, Unlock items/weapons/collabs
 
-#### Save Inheritance:
+#### Save Inheritance (Transfer):
   - Help player Inherit save from other PC to current PC.  
 
 #### Screenshot:
