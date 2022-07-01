@@ -95,6 +95,9 @@ class editorPage(tk.Toplevel):
         self.resizable(0, 0)
         self.editor = SaveEditor()
         self._open_save()
+        if self.file_path == '':
+            self.destroy()
+            return
         self.withdraw()
         self.deiconify()
 
@@ -132,6 +135,7 @@ class editorPage(tk.Toplevel):
 
         except Exception as e:
             PopError(e)
+        self.deiconify()
 
     def _save_as(self):
         try:
@@ -162,6 +166,7 @@ class editorPage(tk.Toplevel):
 
         except Exception as e:
             PopError(e)
+        self.deiconify()
 
 class miskFrame(tk.Frame):
     def __init__(self, parent: editorPage, **kwargs):
