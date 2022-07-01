@@ -35,6 +35,8 @@ LIST_MAP = {'unlockedItems': ['BodyPillow', 'FullMeal', 'PikiPikiPiman', 'Succub
             'seenCollabs': ['BreatheInAsacoco', 'DragonBeam', 'EliteCooking', 'FlatBoard',
                             'MiComet', 'BLLover', 'LightBeam', 'IdolConcert']}
 
+PopError = lambda e: messagebox.showerror(title=f'{e.__class__.__name__}', message=f'{e}')
+
 class SaveEditor(object):
     def __init__(self, file_path: str) -> None:
         self.load_file(file_path)
@@ -86,44 +88,53 @@ class mainApp(tk.Tk):
         self.about_btn.grid(column=2, row=5, pady=10)
 
     def _open_save(self):
-        _init_path = os.path.join(pathlib.Path.home(),'AppData', 'Local', 'HoloCure')
-        self._init_path = _init_path if os.path.isdir(_init_path) else pathlib.Path.home()
-        self.file_path = askopenfilename(title='select save data',
-                                         initialdir=_init_path,
-                                         filetypes=[['.dat save', '*.dat']])
-        print(self.file_path)
-        self.editor = SaveEditor(self.file_path)
-        if hasattr(self, 'mskframe'):
-            for frame in self.frames:
-                frame.destroy()
-            self._create_component()
-            self._layout()
+        try:
+            _init_path = os.path.join(pathlib.Path.home(),'AppData', 'Local', 'HoloCure')
+            self._init_path = _init_path if os.path.isdir(_init_path) else pathlib.Path.home()
+            self.file_path = askopenfilename(title='select save data',
+                                            initialdir=_init_path,
+                                            filetypes=[['.dat save', '*.dat']])
+            if self.file_path == '':
+                return
+            self.editor = SaveEditor(self.file_path)
+            if hasattr(self, 'mskframe'):
+                for frame in self.frames:
+                    frame.destroy()
+                self._create_component()
+                self._layout()
+
+        except Exception as e:
+            PopError(e)
 
     def _save_as(self):
-        save_file_path = asksaveasfilename(defaultextension='.dat',
-                                      initialdir=self._init_path,
-                                      initialfile='save.dat',
-                                      filetypes=[['.dat save', '*.dat']])
-        #misk data
-        for key, var in self.mskframe.var_map.items():
-            self.editor.save_js[key] = float(var.get())
-        
-        #unlocks data
-        for frame in self.chkframes:
-            items = []
-            for key, val in frame.check_map.items():
-                if val.get():
-                    items.append(key)
-            self.editor.save_js[frame.key_name] = items
+        try:
+            save_file_path = asksaveasfilename(defaultextension='.dat',
+                                        initialdir=self._init_path,
+                                        initialfile='save.dat',
+                                        filetypes=[['.dat save', '*.dat']])
+            #misk data
+            for key, var in self.mskframe.var_map.items():
+                self.editor.save_js[key] = float(var.get())
+            
+            #unlocks data
+            for frame in self.chkframes:
+                items = []
+                for key, val in frame.check_map.items():
+                    if val.get():
+                        items.append(key)
+                self.editor.save_js[frame.key_name] = items
 
-        #character level
-        chr_list = []
-        for chr, lv in self.charaframe.chr_var.items():
-            chr_list.append([chr, float(lv.get())])
-        self.editor.save_js['characters'] = chr_list
+            #character level
+            chr_list = []
+            for chr, lv in self.charaframe.chr_var.items():
+                chr_list.append([chr, float(lv.get())])
+            self.editor.save_js['characters'] = chr_list
 
-        self.editor.save_file(save_file_path)
-        messagebox.showinfo(title='info', message=f"Saved!\n raw_data:\n{self.editor.save_js}")
+            self.editor.save_file(save_file_path)
+            messagebox.showinfo(title='info', message=f"Saved!\n raw_data:\n{self.editor.save_js}")
+
+        except Exception as e:
+            PopError(e)
 
 class miskFrame(tk.Frame):
     def __init__(self, mainapp: mainApp, **kwargs):
@@ -249,5 +260,6 @@ if __name__ == "__main__":
         mainapp.deiconify()
         mainapp.mainloop()
     except Exception as e:
-        messagebox.showerror(title='error', message=f'{e}')
+        if mainapp.file_path:
+            PopError(e)
         mainapp.destroy()
