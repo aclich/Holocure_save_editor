@@ -14,7 +14,7 @@ Tested Game version
 0.3.1656105128'''
 
 
-import json, base64, pathlib, os
+import json, base64, os
 import tkinter as tk
 from tkinter import CENTER, DISABLED, messagebox
 from tkinter.filedialog import askopenfilename, asksaveasfilename
@@ -40,27 +40,35 @@ LIST_MAP = {'unlockedItems': ['BodyPillow', 'FullMeal', 'PikiPikiPiman', 'Succub
                             'MiComet', 'BLLover', 'LightBeam', 'IdolConcert']}
 
 GEOMETRY='+700+300'
-_init_path = os.path.join(pathlib.Path.home(),'AppData', 'Local', 'HoloCure')
-InitPath = _init_path if os.path.isdir(_init_path) else pathlib.Path.home()
-PopError = lambda e: messagebox.showerror(title=f'{e.__class__.__name__}', message=f'{e}')
+InitPath = os.path.join(os.environ['LOCALAPPDATA'], 'HoloCure')
 AskSavePath = lambda init_path=InitPath: askopenfilename(title='select save data',
                                                 initialdir=init_path,
                                                 filetypes=[['.dat save', '*.dat']])
+
+def PopError(func):
+    def wrap(self: tk.Toplevel, *args, **kwargs):
+        try:
+            _return = None
+            _return = func(*args, **kwargs)
+        except Exception as e:
+            messagebox.showerror(title=e.__class__.__name__, message=f'{e}')
+        self.deiconify()
+        return _return
+    return wrap
 
 class SaveEditor(object):
     def __init__(self) -> None:
         pass
 
     def load_file(self, file_path: str) -> Tuple[str, int, dict]:
-        self._decrypt_str = ''.join([chr(b) for b in base64.decodebytes(open(file_path, 'rb').read())])
+        self._decrypt_str = ''.join([chr(b) for b in base64.b64decode(open(file_path, 'rb').read())])
         self._trunc_point = self._decrypt_str.find('{"') if self._decrypt_str.find('{ "') == -1 else self._decrypt_str.find('{ "')
         self.save_js = json.loads(self._decrypt_str[self._trunc_point:-1])
         return self._decrypt_str, self._trunc_point, self.save_js
 
     def save_file(self, file_path: str):
         out_str = f"{self._decrypt_str[:self._trunc_point]}{json.dumps(self.save_js)}{self._decrypt_str[-1]}"
-        out_byt = bytes([ord(s) for s in out_str])
-        open(file_path, 'w+').write(base64.encodebytes(out_byt).decode().replace('\n', ''))
+        open(file_path, 'wb+').write(base64.b64encode(bytes([ord(s) for s in out_str])))
 
     def inerit_save(self, orig_path: str, curr_path: str):
         _, _, orig_save_js = self.load_file(orig_path)
@@ -80,26 +88,23 @@ class mainApp(tk.Tk):
     def _create_component(self):
         self.editor_btn = tk.Button(self, text="Save Editor", command=lambda: editorPage(self))
         self.inherit_btn = tk.Button(self, text="Save Inheritance", command=lambda: saveInheritPage(self))
-        self.about_btn = tk.Button(self, text='About', justify=CENTER, 
-                                   command=lambda: aboutpop(self))
+        self.about_btn = tk.Button(self, text='About', command=lambda: aboutpop(self))
 
     def _layout(self):
         for btn in (self.editor_btn, self.inherit_btn, self.about_btn):
             btn.pack(padx=120, pady=(10, 10))
 
 class editorPage(tk.Toplevel):
-    def __init__(self, mainapp:mainApp):
-        super().__init__(mainapp)
+    def __init__(self, mainapp:mainApp, **kwargs):
+        super().__init__(mainapp, **kwargs)
         self.title('Holocure Save Editor')
         self.geometry(GEOMETRY)
         self.resizable(0, 0)
         self.editor = SaveEditor()
-        self._open_save()
+        self._open_save(self)
         if self.file_path == '':
             self.destroy()
             return
-        self.withdraw()
-        self.deiconify()
 
     def _create_component(self):
         self.mskframe = miskFrame(self)
@@ -109,8 +114,8 @@ class editorPage(tk.Toplevel):
         self.charaframe = charaFrame(self)
 
         self.frames: List[tk.Frame] = [self.mskframe, *self.chkframes, self.charaframe]
-        self.open_btn = tk.Button(self, text='Open', justify=CENTER, command=self._open_save)
-        self.save_btn = tk.Button(self, text='Save', justify=CENTER, command=self._save_as)
+        self.open_btn = tk.Button(self, text='Open', justify=CENTER, command=lambda: self._open_save(self))
+        self.save_btn = tk.Button(self, text='Save', justify=CENTER, command=lambda: self._save_as(self))
 
     def _layout(self):
         t_col = 2
@@ -120,53 +125,39 @@ class editorPage(tk.Toplevel):
         self.charaframe.grid(column=0, columnspan=t_col, row=4, sticky='nwes', pady=(0,10))
         self.open_btn.grid(column=0, row=5)
         self.save_btn.grid(column=1, row=5, pady=10)
+        self.withdraw()
+        self.deiconify()
 
+    @PopError
     def _open_save(self):
-        try:
-            self.file_path = AskSavePath()
-            if self.file_path == '':
-                return
-            self.editor.load_file(self.file_path)
-            if hasattr(self, 'mskframe'):
-                for frame in self.frames:
-                    frame.destroy()
-            self._create_component()
-            self._layout()
+        self.file_path = AskSavePath()
+        if self.file_path == '':
+            return
+        self.editor.load_file(self.file_path)
+        if hasattr(self, 'mskframe'):
+            for frame in self.frames:
+                frame.destroy()
+        self._create_component()
+        self._layout()
 
-        except Exception as e:
-            PopError(e)
-        self.deiconify()
-
+    @PopError
     def _save_as(self):
-        try:
-            save_file_path = asksaveasfilename(defaultextension='.dat',
-                                        initialdir=os.path.dirname(os.path.abspath(self.file_path)),
-                                        initialfile='save.dat',
-                                        filetypes=[['.dat save', '*.dat']])
-            #misk data
-            for key, var in self.mskframe.var_map.items():
-                self.editor.save_js[key] = float(var.get())
-            
-            #unlocks data
-            for frame in self.chkframes:
-                items = []
-                for key, val in frame.check_map.items():
-                    if val.get():
-                        items.append(key)
-                self.editor.save_js[frame.key_name] = items
+        save_file_path = asksaveasfilename(defaultextension='.dat',
+                                    initialdir=os.path.dirname(os.path.abspath(self.file_path)),
+                                    initialfile='save.dat',
+                                    filetypes=[['.dat save', '*.dat']])
+        #misk data
+        self.editor.save_js.update({key: float(var.get()) for key, var in self.mskframe.var_map.items()})
 
-            #character level
-            chr_list = []
-            for chr, lv in self.charaframe.chr_var.items():
-                chr_list.append([chr, float(lv.get())])
-            self.editor.save_js['characters'] = chr_list
+        #unlocks data
+        self.editor.save_js.update({frame.key_name: [key for key, val in frame.check_map.items() if val.get()]
+                                    for frame in self.chkframes})
 
-            self.editor.save_file(save_file_path)
-            messagebox.showinfo(title='info', message=f"Saved!\n raw_data:\n{self.editor.save_js}")
+        #character level
+        self.editor.save_js['characters'] = [[chr, float(lv.get())] for chr, lv in self.charaframe.chr_var.items()]
 
-        except Exception as e:
-            PopError(e)
-        self.deiconify()
+        self.editor.save_file(save_file_path)
+        messagebox.showinfo(title='info', message=f"Saved!\n raw_data:\n{self.editor.save_js}")
 
 class miskFrame(tk.Frame):
     def __init__(self, parent: editorPage, **kwargs):
@@ -191,26 +182,16 @@ class miskFrame(tk.Frame):
         col = row = 0
         self.title_label.grid(column=col, row=row, columnspan=100, sticky='nwes')
         row += 1
-        for key in self.lb_map:
-            self.lb_map[key].grid(column=col, row=row, sticky='e', pady=5)
-            self.en_map[key].grid(column=col+1, row=row, sticky='w', padx=(0, 10), pady=5)
-            col += 2
-            if col > 8:
-                row += 1
-                col = 0
-        row +=1
-        col = 0
-        for key in self.ck_map:
-            self.ck_map[key].grid(column=col, row=row, columnspan=1, sticky='w', ipady=10)
-            col += 1
-            if col > 6:
-                row += 1
-                col = 0
+        for i, key in zip(range(0,len(self.lb_map)*2, 2), self.lb_map):
+            col, _row = i%10, i//10+row
+            self.lb_map[key].grid(column=col, row=_row, sticky='e', pady=5)
+            self.en_map[key].grid(column=col+1, row=_row, sticky='w', padx=(0, 10), pady=5)
+        col, row = 0, _row+1
+        for i, key in enumerate(self.ck_map):
+            self.ck_map[key].grid(column=i%6, row=row+i//6, columnspan=1, sticky='w', ipady=10)
 
     def _valid_num(self, P):
-        print(P)
-        # return True
-        if str.isdigit(P) or P == '':
+        if str.isdigit(P):
             return True
         return False
 
@@ -233,12 +214,8 @@ class unlockFrame(tk.Frame):
         col = row = 0
         self.sub_lb.grid(column=col,columnspan=3 ,row=row, sticky="nsw")
         row += 1
-        for check_box in self.ck_map.values():
-            check_box.grid(column=col, row=row, sticky='w', pady=(0,3), padx=(0, 5))
-            col += 1
-            if col > 5:
-                col = 0
-                row += 1
+        for i, check_box in enumerate(self.ck_map.values()):
+            check_box.grid(column=i%6, row=row+i//6, sticky='w', pady=(0,3), padx=(0, 5))
 
 class charaFrame(tk.Frame):
     def __init__(self, parent:editorPage, **kwargs):
@@ -259,17 +236,14 @@ class charaFrame(tk.Frame):
         row = col = 0
         self.sub_lb.grid(column=col, columnspan=3, row=row, sticky='w')
         row += 1
-        for chr in self.chr_lb:
-            self.chr_lb[chr].grid(column=col, row=row, sticky='w', pady=(0,5))
-            self.chr_ent[chr].grid(column=col+1, row=row, sticky='e', pady=(0,5), padx=(0,5))
-            col += 2
-            if col > 12:
-                col = 0
-                row += 1
+        for i, chr in zip(range(0,len(self.chr_lb)*2,2), self.chr_lb):
+            col, _row = i%14, i//14+row
+            self.chr_lb[chr].grid(column=col, row=_row, sticky='w', pady=(0,5))
+            self.chr_ent[chr].grid(column=col+1, row=_row, sticky='e', pady=(0,5), padx=(0,5))
 
 class saveInheritPage(tk.Toplevel):
-    def __init__(self, mainapp:mainApp):
-        super().__init__(mainapp)
+    def __init__(self, mainapp:mainApp, **kwargs):
+        super().__init__(mainapp, **kwargs)
         self.title('Save Inheritace')
         self.geometry(GEOMETRY)
         self.resizable(0, 0)
@@ -285,10 +259,10 @@ class saveInheritPage(tk.Toplevel):
                         }
         self.lb_map = {k: tk.Label(self, textvariable=self.var_map[k]) for k in {'orig', 'curr'}}
         self.open_orig_btn = tk.Button(self, text='Select Save From Other PC',
-                                       command=self._select_orig_save, width=25)
+                                       command=lambda: self._select_save('orig'), width=25)
         self.open_curr_btn = tk.Button(self, text='Select Save In This PC',
-                                       command=self._select_curr_save, width=25)
-        self.inherit_btn = tk.Button(self, text='Run', command=self._run_inherit)
+                                       command=lambda: self._select_save('curr'), width=25)
+        self.inherit_btn = tk.Button(self, text='Run', command=lambda: self._run_inherit(self))
         self.btn_map = {
             'orig': self.open_orig_btn,
             'curr': self.open_curr_btn
@@ -300,28 +274,21 @@ class saveInheritPage(tk.Toplevel):
             self.lb_map[k].grid(column=1, row=i, sticky='nsw', pady=(10,0), padx=(5,10))
         self.inherit_btn.grid(column=0, row=2, sticky='nsw', pady=(10,10), padx=10)
 
-    def _select_orig_save(self):
-        self.var_map['orig'].set(AskSavePath())
-        self.deiconify()
-    
-    def _select_curr_save(self):
-        self.var_map['curr'].set(AskSavePath())
+    def _select_save(self, key: str):
+        _file_path = AskSavePath(self.var_map[key].get()) if self.var_map[key].get() else AskSavePath()
+        self.var_map[key].set(_file_path)
         self.deiconify()
 
+    @PopError
     def _run_inherit(self):
-        try:
-            _orig_save = self.var_map['orig'].get()
-            _curr_save = self.var_map['curr'].get()
-            self.editor.inerit_save(_orig_save, _curr_save)
-            messagebox.showinfo(title='Inheritence success', message=f'Success!\nRaw data:\n{self.editor.save_js}')
-        except Exception as e:
-            PopError(e)
-        self.deiconify()
-        
+        _orig_save = self.var_map['orig'].get()
+        _curr_save = self.var_map['curr'].get()
+        self.editor.inerit_save(_orig_save, _curr_save)
+        messagebox.showinfo(title='Inheritence success', message=f'Success!\nRaw data:\n{self.editor.save_js}')
 
 class aboutpop(tk.Toplevel):
-    def __init__(self, mainapp):
-        super().__init__(mainapp)
+    def __init__(self, mainapp, **kwargs):
+        super().__init__(mainapp, **kwargs)
         self.title('About')
         self.geometry(GEOMETRY)
         self.resizable(0, 0)
@@ -339,10 +306,5 @@ class aboutpop(tk.Toplevel):
         self.ok_btn.pack(anchor=CENTER)
 
 if __name__ == "__main__":
-    try:
-        mainapp = mainApp()
-        mainapp.mainloop()
-    except Exception as e:
-        if mainapp.file_path:
-            PopError(e)
-        mainapp.destroy()
+    mainapp = mainApp()
+    mainapp.mainloop()
