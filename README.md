@@ -1,6 +1,10 @@
 # Holocure Save Tool
 A simple save Tool for Holocure fan game.  
 Download (exe): https://github.com/aclich/Holocure_save_editor/releases/download/v0.0.2/HoloCure_Save_Tool_v0.0.2.zip  
+
+#### Virus detected issue
+The released exe is packed by pyinstaller, and it will cause **false positives** in some anti-virus software. Please don't worry if you downloaded or used it. To see my full explanation, please refer to https://github.com/aclich/Holocure_save_editor/issues/4#issuecomment-1174153928.  
+
 ## Feature:
 #### Save editing:
   - Holocoin
