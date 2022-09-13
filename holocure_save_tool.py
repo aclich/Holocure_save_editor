@@ -1,17 +1,22 @@
-ABOUT_MSG='''HoloCure bad bad Save Tool
-Version: 0.0.2
-Date: 2022/07/02
+VERSION = '0.0.3-Pilot'
+ABOUT_MSG=f'''HoloCure bad bad Save Tool
+Version: {VERSION}
+Date: 2022/09/13
 Author: Aclich
 Require: python > 3.6, tkinter
 Source code: https://github.com/aclich/Holocure_save_editor
 
 Change Log:
- - Error message popout
- - Save Inheritance tool
+ - New Item, Colab unlock
+ - Unlock Stage, Outfits
+ - Tears Edit
 
 Tested Game version
-0.3.1656491913
-0.3.1656105128'''
+0.4.1662728581
+
+Known issue:
+Not compatible with older version of save file.
+'''
 
 
 import json, base64, os
@@ -20,24 +25,26 @@ from tkinter import CENTER, DISABLED, messagebox
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 from typing import List, Tuple
 
-KEYS = ['HP', 'ATK', 'SPD', 'EXP', 'crit', 'haste',
-        'food', 'moneyGain','regen', 'reroll', 'specCDR',
-        'pickupRange','specUnlock','holoCoins', 
-        'refund', 'challenge','eliminate',
-        'randomMoneyKey', 'unlockedCharacters',
-        'unlockedWeapons', 'unlockedItems', 'seenCollabs', 'characters' ]
-LIST_KEYS = ['unlockedItems', 'unlockedWeapons', 'seenCollabs', 'characters']
-CHK_KEYS = ['specUnlock', 'refund', 'challenge']
+LVL_KEYS = [] #['characters', 'tears']
+CHK_KEYS = ['specUnlock', 'refund', 'challenge', 'GROff', 'growth']
 UNKNOW_KEYS = ['unlockedCharacters', 'eliminate']
-NUMB_KEYS = [k for k in KEYS if k not in [*LIST_KEYS, *CHK_KEYS, *UNKNOW_KEYS]]
+NUMB_KEYS = []
 
 LIST_MAP = {'unlockedItems': ['BodyPillow', 'FullMeal', 'PikiPikiPiman', 'SuccubusHorn', 'Headphones', 'UberSheep',
                               'HolyMilk', 'Sake', 'FaceMask', 'CreditCard', 'GorillasPaw', 'InjectionAsacoco',
-                              'IdolCostume', 'Plushie', 'StudyGlasses', 'SuperChattoTime', 'EnergyDrink'],
+                              'IdolCostume', 'Plushie', 'StudyGlasses', 'SuperChattoTime', 'EnergyDrink', 'Halu',
+                              'Membership', 'GWSPill', 'ChickensFeather', 'Bandaid', 'Limiter', 'PiggyBank'],
             'unlockedWeapons': ['PsychoAxe', 'Glowstick', 'SpiderCooking', 'Tailplug', 'BLBook', 'EliteLava',
-                                'HoloBomb', 'HoloLaser', 'CuttingBoard', 'IdolSong'],
+                                'HoloBomb', 'HoloLaser', 'CuttingBoard', 'IdolSong', 'CEOTears', 'WamyWater',
+                                'XPotato'],
             'seenCollabs': ['BreatheInAsacoco', 'DragonBeam', 'EliteCooking', 'FlatBoard',
-                            'MiComet', 'BLLover', 'LightBeam', 'IdolConcert']}
+                            'MiComet', 'BLLover', 'LightBeam', 'IdolConcert', 'StreamOfTears',
+                            'MariLamy', 'BrokenDreams', 'RapDog'],
+            'unlockedStages': ['STAGE 1', 'STAGE 2', 'STAGE 1 (HARD)'],
+            'unlockedOutfits': ['default', 'ameAlt1', 'kiaraAlt1', 'ameAlt1', 'inaAlt1', 'guraAlt1', 'calliAlt1',
+                                'kiaraAlt1', 'irysAlt1', 'baeAlt1', 'sanaAlt1', 'faunaAlt1', 'mumeiAlt1', 'kroniiAlt1',
+                                'kurokami']
+            }
 
 GEOMETRY='+700+300'
 InitPath = os.path.join(os.environ['LOCALAPPDATA'], 'HoloCure')
@@ -60,10 +67,27 @@ class SaveEditor(object):
     def __init__(self) -> None:
         pass
 
+    def _update_keys(self) -> None:
+        global NUMB_KEYS, LVL_KEYS, LIST_MAP
+        NUMB_KEYS, LVL_KEYS = [], []
+        for k, v in self.save_js.items():
+            LVL_KEYS += [k] if isinstance(v, list) and len(v) > 0 and \
+                               all([isinstance(l, list) and isinstance(l[1], float) for l in v]) else []
+            NUMB_KEYS += [k] if k not in [*LIST_MAP.keys(), *CHK_KEYS, *UNKNOW_KEYS, *LVL_KEYS] and isinstance(v, float) else []
+            if isinstance(v, list) and k not in LVL_KEYS and k not in LIST_MAP:
+                LIST_MAP.update({k:v})
+
+        for rm_key in [k for k in LIST_MAP if k not in self.save_js]:
+            _ = LIST_MAP.pop(rm_key, None)
+        
+        for rm_key in [k for k in CHK_KEYS if k not in self.save_js]:
+            _ = CHK_KEYS.remove(rm_key)
+
     def load_file(self, file_path: str) -> Tuple[str, int, dict]:
         self._decrypt_str = ''.join([chr(b) for b in base64.b64decode(open(file_path, 'rb').read())])
         self._trunc_point = self._decrypt_str.find('{"') if self._decrypt_str.find('{ "') == -1 else self._decrypt_str.find('{ "')
         self.save_js = json.loads(self._decrypt_str[self._trunc_point:-1])
+        self._update_keys()
         return self._decrypt_str, self._trunc_point, self.save_js
 
     def save_file(self, file_path: str):
@@ -79,7 +103,7 @@ class SaveEditor(object):
 class mainApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title('HoloCure Save Tool v0.0.2')
+        self.title(f'HoloCure Save Tool {VERSION}')
         self.resizable(0, 0)
         self.geometry(GEOMETRY)
         self._create_component()
@@ -108,23 +132,22 @@ class editorPage(tk.Toplevel):
 
     def _create_component(self):
         self.mskframe = miskFrame(self)
-        self.chkframes = [unlockFrame(self, key_name='unlockedItems'),
-                          unlockFrame(self, key_name='unlockedWeapons'),
-                          unlockFrame(self, key_name='seenCollabs')]
-        self.charaframe = charaFrame(self)
+        self.chkframes = [unlockFrame(self, key_name=k) for k in LIST_MAP.keys()]
+        self.LevelFrames = [LevelFrame(self, key_name=k) for k in LVL_KEYS] 
 
-        self.frames: List[tk.Frame] = [self.mskframe, *self.chkframes, self.charaframe]
+        self.frames: List[tk.Frame] = [self.mskframe, *self.chkframes, *self.LevelFrames]
         self.open_btn = tk.Button(self, text='Open', justify=CENTER, command=lambda: self._open_save(self))
         self.save_btn = tk.Button(self, text='Save', justify=CENTER, command=lambda: self._save_as(self))
 
     def _layout(self):
-        t_col = 2
-        self.mskframe.grid(column=0, columnspan=t_col, row=0, sticky='news', pady=(0,10))
-        for i, frame in enumerate(self.chkframes, 1):
-            frame.grid(column=0, columnspan=t_col, row=i, sticky='news', pady=(0,5))
-        self.charaframe.grid(column=0, columnspan=t_col, row=4, sticky='nwes', pady=(0,10))
-        self.open_btn.grid(column=0, row=5)
-        self.save_btn.grid(column=1, row=5, pady=10)
+        t_col, _row = 2, 0
+        self.mskframe.grid(column=0, columnspan=t_col, row=_row, sticky='news', pady=(0,10))
+        for _row, frame in enumerate(self.chkframes, 1):
+            frame.grid(column=0, columnspan=t_col, row=_row, sticky='news', pady=(0,5))
+        for _row, frame in enumerate(self.LevelFrames, _row+1):
+            frame.grid(column=0, columnspan=t_col, row=_row, sticky='news', pady=(0,10))
+        self.open_btn.grid(column=0, row=_row+1)
+        self.save_btn.grid(column=1, row=_row+1, pady=10)
         self.withdraw()
         self.deiconify()
 
@@ -153,8 +176,9 @@ class editorPage(tk.Toplevel):
         self.editor.save_js.update({frame.key_name: [key for key, val in frame.check_map.items() if val.get()]
                                     for frame in self.chkframes})
 
-        #character level
-        self.editor.save_js['characters'] = [[chr, float(lv.get())] for chr, lv in self.charaframe.chr_var.items()]
+        #Levels data
+        self.editor.save_js.update({frame.key_name: [[chr, float(lv.get())] for chr, lv in frame.chr_var.items()]
+                                    for frame in self.LevelFrames})
 
         self.editor.save_file(save_file_path)
         messagebox.showinfo(title='info', message=f"Saved!\n raw_data:\n{self.editor.save_js}")
@@ -217,16 +241,16 @@ class unlockFrame(tk.Frame):
         for i, check_box in enumerate(self.ck_map.values()):
             check_box.grid(column=i%6, row=row+i//6, sticky='w', pady=(0,3), padx=(0, 5))
 
-class charaFrame(tk.Frame):
-    def __init__(self, parent:editorPage, **kwargs):
+class LevelFrame(tk.Frame):
+    def __init__(self, parent:editorPage, key_name:str, **kwargs):
         super().__init__(parent, **kwargs)
-        self.parent = parent
-        self.chr_list: list = self.parent.editor.save_js['characters']
+        self.parent, self.key_name = parent, key_name
+        self.chr_list: list = self.parent.editor.save_js[key_name]
         self._create_component()
         self._layout()
 
     def _create_component(self):
-        self.sub_lb = tk.Label(self, text="Characters LV:")
+        self.sub_lb = tk.Label(self, text=self.key_name)
         self.chr_var = {k: tk.IntVar(value=lv) for k, lv in self.chr_list}
         self.chr_lb = {k:tk.Label(self, text=f"{k}: ") for k, _ in self.chr_list}
         self.chr_ent = {k: tk.Entry(self, width=5,

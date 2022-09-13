@@ -8,3 +8,6 @@ __pycache__/
 *.zip
 *.ipynb
 *.ico
+dist/
+build/
+*.spec
