@@ -1,6 +1,15 @@
 # Holocure Save Tool
-A simple save Tool for Holocure fan game.  
-Download (exe): https://github.com/aclich/Holocure_save_editor/releases/download/v0.0.2/HoloCure_Save_Tool_v0.0.2.zip  
+A simple save Tool for Holocure fan game.
+Download (exe): https://github.com/aclich/Holocure_save_editor/releases/download/v0.0.3-pilot/HoloCure_Save_Tool_v0.0.3_Pilot.zip  
+- Support game version 0.4.1662728581
+
+
+### Known Issue:
+  - Not compatible with older game version of save.
+
+### v0.0.3 Expected Update:
+  - Basic compatible with previous save version. 🚀
+  - Optimize UI ⏸️
 
 #### Virus detected issue
 The released exe is packed by pyinstaller, and it will cause **false positives** in some anti-virus software. Please don't worry if you downloaded or used it. To see my full explanation, please refer to https://github.com/aclich/Holocure_save_editor/issues/4#issuecomment-1174153928.  
@@ -10,7 +19,8 @@ The released exe is packed by pyinstaller, and it will cause **false positives**
   - Holocoin
   - Shop items
   - Charactor gacha level
-  - Lock, Unlock items/weapons/collabs
+  - Tears
+  - Lock, Unlock items/weapons/collabs/outfits/stages
 
 #### Save Inheritance (Transfer):
   - Help player Inherit save from other PC to current PC.  
