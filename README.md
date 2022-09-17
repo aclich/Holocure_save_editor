@@ -1,7 +1,8 @@
 # Holocure Save Tool
 A simple save Tool for Holocure fan game.
-Download (exe): https://github.com/aclich/Holocure_save_editor/releases/download/v0.0.3-pilot/HoloCure_Save_Tool_v0.0.3_Pilot.zip  
+Download (exe): https://github.com/aclich/Holocure_save_editor/releases/download/v0.0.3-beta/HoloCure_Save_Tool_v0.0.3_Beta.zip  
 - Support game version 0.4.1662728581
+- Add scroll bar in editor. (issue https://github.com/aclich/Holocure_save_editor/issues/6#issue-1376130532)
 
 
 ### Known Issue:

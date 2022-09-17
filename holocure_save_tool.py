@@ -1,21 +1,19 @@
-VERSION = '0.0.3-Pilot'
+VERSION = '0.0.3-Beta'
 ABOUT_MSG=f'''HoloCure bad bad Save Tool
 Version: {VERSION}
-Date: 2022/09/13
+Date: 2022/09/17
 Author: Aclich
 Require: python > 3.6, tkinter
 Source code: https://github.com/aclich/Holocure_save_editor
 
 Change Log:
- - New Item, Colab unlock
- - Unlock Stage, Outfits
- - Tears Edit
+ - Add vertical scrollbar in editor for fixing toooooo long content 😵
 
 Tested Game version
 0.4.1662728581
 
 Known issue:
-Not compatible with older version of save file.
+Not compatible with older version of save file. 
 '''
 
 
@@ -46,7 +44,7 @@ LIST_MAP = {'unlockedItems': ['BodyPillow', 'FullMeal', 'PikiPikiPiman', 'Succub
                                 'kurokami']
             }
 
-GEOMETRY='+700+300'
+GEOMETRY='+600+200'
 InitPath = os.path.join(os.environ['LOCALAPPDATA'], 'HoloCure')
 AskSavePath = lambda init_path=InitPath: askopenfilename(title='select save data',
                                                 initialdir=init_path,
@@ -86,12 +84,12 @@ class SaveEditor(object):
     def load_file(self, file_path: str) -> Tuple[str, int, dict]:
         self._decrypt_str = ''.join([chr(b) for b in base64.b64decode(open(file_path, 'rb').read())])
         self._trunc_point = self._decrypt_str.find('{"') if self._decrypt_str.find('{ "') == -1 else self._decrypt_str.find('{ "')
-        self.save_js = json.loads(self._decrypt_str[self._trunc_point:-1])
+        self.save_js = json.loads(self._decrypt_str[self._trunc_point:self._decrypt_str.rfind('}')+1])
         self._update_keys()
         return self._decrypt_str, self._trunc_point, self.save_js
 
     def save_file(self, file_path: str):
-        out_str = f"{self._decrypt_str[:self._trunc_point]}{json.dumps(self.save_js)}{self._decrypt_str[-1]}"
+        out_str = f"{self._decrypt_str[:self._trunc_point]}{json.dumps(self.save_js)}"
         open(file_path, 'wb+').write(base64.b64encode(bytes([ord(s) for s in out_str])))
 
     def inerit_save(self, orig_path: str, curr_path: str):
@@ -122,22 +120,52 @@ class editorPage(tk.Toplevel):
     def __init__(self, mainapp:mainApp, **kwargs):
         super().__init__(mainapp, **kwargs)
         self.title('Holocure Save Editor')
-        self.geometry(GEOMETRY)
-        self.resizable(0, 0)
         self.editor = SaveEditor()
         self._open_save(self)
         if self.file_path == '':
             self.destroy()
             return
+        self.geometry(f"690x750{GEOMETRY}")
+        self.resizable(0, 100)
+
+    ### Mousewheel Events 
+    def _bind_mouse_wheel(self, event):
+        self.bind_all("<MouseWheel>", self._on_mouse_wheel)
+
+    def _unbind_mouse_wheel(self, event):
+        self.canvas.unbind_all('<MouseWheel>')
+
+    def _on_mouse_wheel(self, event):
+        self.canvas.yview_scroll(-1 * int((event.delta / 120)), "units")
+    ### End of Mousewheel Events
 
     def _create_component(self):
+        ###Create Scrollable Frame
+        self.ground_frame = tk.Frame(self)
+        self.ground_frame.pack(fill=tk.BOTH, expand=1)
+
+        self.canvas = tk.Canvas(self.ground_frame)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
+
+        self.vertical_bar = tk.Scrollbar(self.ground_frame, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.vertical_bar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.canvas.configure(yscrollcommand=self.vertical_bar.set)
+        self.canvas.bind('<Configure>', lambda e: self.canvas.configure(scrollregion=self.canvas.bbox('all')))
+
+        self.scroll_frame = tk.Frame(self.canvas)
+        self.canvas.create_window((0,0), window=self.scroll_frame, anchor='nw')
+
+        self.canvas.bind('<Enter>', self._bind_mouse_wheel)
+        self.canvas.bind('<Leave>', self._unbind_mouse_wheel)
+        ###End of Create Scrollable Frame
+
         self.mskframe = miskFrame(self)
         self.chkframes = [unlockFrame(self, key_name=k) for k in LIST_MAP.keys()]
         self.LevelFrames = [LevelFrame(self, key_name=k) for k in LVL_KEYS] 
 
-        self.frames: List[tk.Frame] = [self.mskframe, *self.chkframes, *self.LevelFrames]
-        self.open_btn = tk.Button(self, text='Open', justify=CENTER, command=lambda: self._open_save(self))
-        self.save_btn = tk.Button(self, text='Save', justify=CENTER, command=lambda: self._save_as(self))
+        self.open_btn = tk.Button(self.scroll_frame, text='Open', justify=CENTER, command=lambda: self._open_save(self))
+        self.save_btn = tk.Button(self.scroll_frame, text='Save', justify=CENTER, command=lambda: self._save_as(self))
 
     def _layout(self):
         t_col, _row = 2, 0
@@ -157,9 +185,10 @@ class editorPage(tk.Toplevel):
         if self.file_path == '':
             return
         self.editor.load_file(self.file_path)
-        if hasattr(self, 'mskframe'):
-            for frame in self.frames:
-                frame.destroy()
+        if hasattr(self, 'ground_frame'):
+            self.ground_frame.destroy()
+            # for frame in self.frames:
+            #     frame.destroy()
         self._create_component()
         self._layout()
 
@@ -185,7 +214,7 @@ class editorPage(tk.Toplevel):
 
 class miskFrame(tk.Frame):
     def __init__(self, parent: editorPage, **kwargs):
-        super().__init__(parent, **kwargs)
+        super().__init__(parent.scroll_frame, **kwargs)
         self.parent = parent
         self.vcmd = (self.register(self._valid_num), '%P')
         self._create_component()
@@ -221,7 +250,7 @@ class miskFrame(tk.Frame):
 
 class unlockFrame(tk.Frame):
     def __init__(self, parent: editorPage, key_name:str, **kwargs):
-        super().__init__(parent, **kwargs)
+        super().__init__(parent.scroll_frame, **kwargs)
         self.key_name = key_name
         self.parent = parent
         self.items_name = LIST_MAP[key_name]
@@ -243,7 +272,7 @@ class unlockFrame(tk.Frame):
 
 class LevelFrame(tk.Frame):
     def __init__(self, parent:editorPage, key_name:str, **kwargs):
-        super().__init__(parent, **kwargs)
+        super().__init__(parent.scroll_frame, **kwargs)
         self.parent, self.key_name = parent, key_name
         self.chr_list: list = self.parent.editor.save_js[key_name]
         self._create_component()
