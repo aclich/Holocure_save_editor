@@ -1,8 +1,9 @@
 # Holocure Save Tool
 A simple save Tool for Holocure fan game.
-Download (exe): https://github.com/aclich/Holocure_save_editor/releases/download/v0.0.3-beta/HoloCure_Save_Tool_v0.0.3_Beta.zip  
-- Support game version 0.4.1662728581
+Download (exe): https://github.com/aclich/Holocure_save_editor/releases/download/v0.0.3-C/HoloCure_Save_Tool_v0.0.3_C.zip  
+- Support game version 0.4.1663293877
 - Add scroll bar in editor. (issue https://github.com/aclich/Holocure_save_editor/issues/6#issue-1376130532)
+- Fix Issue https://github.com/aclich/Holocure_save_editor/issues/8
 
 
 ### Known Issue:
@@ -47,4 +48,12 @@ The released exe is packed by pyinstaller, and it will cause **false positives**
 0. Install python if haven't (version > 3.6)
 1. git clone https://github.com/aclich/Holocure_save_editor.git
 2. cd Holocure_save_editor
-3. python holocure_save_editor.py
+3. python holocure_save_editor.py  
+
+- - - 
+ 
+***Note**
+Build Command:
+>```
+>pyinstaller.exe --upx-dir <Path to upx> --noconsole --onefile --name HoloCure_Save_Tool_{VERSION} --icon <Path to Icon> .\holocure_save_tool.py --clean
+>```
