@@ -1,15 +1,16 @@
-VERSION = '0.0.3-Beta'
+VERSION = '0.0.3-C'
 ABOUT_MSG=f'''HoloCure bad bad Save Tool
 Version: {VERSION}
-Date: 2022/09/17
+Date: 2022/09/18
 Author: Aclich
 Require: python > 3.6, tkinter
 Source code: https://github.com/aclich/Holocure_save_editor
 
 Change Log:
- - Add vertical scrollbar in editor for fixing toooooo long content 😵
+ - Update for new save content🤯.
 
 Tested Game version
+0.4.1663293877
 0.4.1662728581
 
 Known issue:
@@ -24,10 +25,9 @@ from tkinter.filedialog import askopenfilename, asksaveasfilename
 from typing import List, Tuple
 
 LVL_KEYS = [] #['characters', 'tears']
-CHK_KEYS = ['specUnlock', 'refund', 'challenge', 'GROff', 'growth']
-UNKNOW_KEYS = ['unlockedCharacters', 'eliminate']
 NUMB_KEYS = []
-
+CHK_KEYS = ['specUnlock', 'refund', 'challenge', 'GROff', 'growth']
+UNKNOW_KEYS = ['unlockedCharacters', 'eliminate', 'completedStages']
 LIST_MAP = {'unlockedItems': ['BodyPillow', 'FullMeal', 'PikiPikiPiman', 'SuccubusHorn', 'Headphones', 'UberSheep',
                               'HolyMilk', 'Sake', 'FaceMask', 'CreditCard', 'GorillasPaw', 'InjectionAsacoco',
                               'IdolCostume', 'Plushie', 'StudyGlasses', 'SuperChattoTime', 'EnergyDrink', 'Halu',
@@ -43,7 +43,7 @@ LIST_MAP = {'unlockedItems': ['BodyPillow', 'FullMeal', 'PikiPikiPiman', 'Succub
                                 'kiaraAlt1', 'irysAlt1', 'baeAlt1', 'sanaAlt1', 'faunaAlt1', 'mumeiAlt1', 'kroniiAlt1',
                                 'kurokami']
             }
-
+ORIG_LIST_MAP, ORIG_CHK_KEYS = LIST_MAP, CHK_KEYS
 GEOMETRY='+600+200'
 InitPath = os.path.join(os.environ['LOCALAPPDATA'], 'HoloCure')
 AskSavePath = lambda init_path=InitPath: askopenfilename(title='select save data',
@@ -52,8 +52,8 @@ AskSavePath = lambda init_path=InitPath: askopenfilename(title='select save data
 
 def PopError(func):
     def wrap(self: tk.Toplevel, *args, **kwargs):
+        _return = None
         try:
-            _return = None
             _return = func(*args, **kwargs)
         except Exception as e:
             messagebox.showerror(title=e.__class__.__name__, message=f'{e}')
@@ -66,14 +66,17 @@ class SaveEditor(object):
         pass
 
     def _update_keys(self) -> None:
-        global NUMB_KEYS, LVL_KEYS, LIST_MAP
-        NUMB_KEYS, LVL_KEYS = [], []
+        global NUMB_KEYS, LVL_KEYS, LIST_MAP, UNKNOW_KEYS
+        NUMB_KEYS, LVL_KEYS, LIST_MAP, CHK_KEYS = [], [], ORIG_LIST_MAP, ORIG_CHK_KEYS
         for k, v in self.save_js.items():
-            LVL_KEYS += [k] if isinstance(v, list) and len(v) > 0 and \
-                               all([isinstance(l, list) and isinstance(l[1], float) for l in v]) else []
-            NUMB_KEYS += [k] if k not in [*LIST_MAP.keys(), *CHK_KEYS, *UNKNOW_KEYS, *LVL_KEYS] and isinstance(v, float) else []
-            if isinstance(v, list) and k not in LVL_KEYS and k not in LIST_MAP:
+            if isinstance(v, list) and len(v) > 0 and all((isinstance(l, list) and isinstance(l[1], (float, int)) for l in v)):
+                LVL_KEYS += [k]
+            elif k not in (*LIST_MAP.keys(), *CHK_KEYS, *UNKNOW_KEYS, *LVL_KEYS) and isinstance(v, (float, int)):
+                NUMB_KEYS += [k]
+            elif k not in (*LVL_KEYS, *LIST_MAP) and isinstance(v, list) and len(v) and isinstance(v[0], str):
                 LIST_MAP.update({k:v})
+            else:
+                UNKNOW_KEYS += [k]
 
         for rm_key in [k for k in LIST_MAP if k not in self.save_js]:
             _ = LIST_MAP.pop(rm_key, None)
@@ -90,7 +93,7 @@ class SaveEditor(object):
 
     def save_file(self, file_path: str):
         out_str = f"{self._decrypt_str[:self._trunc_point]}{json.dumps(self.save_js)}"
-        open(file_path, 'wb+').write(base64.b64encode(bytes([ord(s) for s in out_str])))
+        open(file_path, 'wb+').write(base64.b64encode(bytes((ord(s) for s in out_str))))
 
     def inerit_save(self, orig_path: str, curr_path: str):
         _, _, orig_save_js = self.load_file(orig_path)
@@ -187,8 +190,6 @@ class editorPage(tk.Toplevel):
         self.editor.load_file(self.file_path)
         if hasattr(self, 'ground_frame'):
             self.ground_frame.destroy()
-            # for frame in self.frames:
-            #     frame.destroy()
         self._create_component()
         self._layout()
 
